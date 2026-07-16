@@ -1,0 +1,2147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>硅基群聊 · 多模型议会 Pro</title>
+  <style>
+    :root {
+      --bg-main: #f8fafc;
+      --bg-sidebar: #ffffff;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --bubble-user: linear-gradient(135deg, #2563eb, #3b82f6);
+      --bubble-ai: #ffffff;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      --radius: 16px;
+    }
+
+    [data-theme='dark'] {
+      --bg-main: #020617;
+      --bg-sidebar: #0f172a;
+      --primary: #3b82f6;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border-color: #1e293b;
+      --bubble-user: linear-gradient(135deg, #1d4ed8, #2563eb);
+      --bubble-ai: #1e293b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg-main);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    /* Modern Header */
+    .app-header {
+      background: var(--bg-sidebar);
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--border-color);
+      z-index: 100;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 1.25rem; color: var(--primary); letter-spacing: -0.02em; }
+    
+    .session-selector {
+      background: var(--bg-main);
+      padding: 8px 16px;
+      border-radius: 24px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border-color);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .session-selector:hover { border-color: var(--primary); transform: translateY(-1px); box-shadow: var(--shadow); }
+
+    .header-actions { display: flex; gap: 12px; }
+    .icon-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 10px;
+      border-radius: 12px;
+      transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .icon-btn:hover { background: var(--bg-main); color: var(--primary); transform: scale(1.05); }
+
+    /* Main Container */
+    .app-main { display: flex; flex: 1; overflow: hidden; position: relative; }
+
+    /* Collapsible Config Panel */
+    .config-panel {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      background: var(--bg-sidebar);
+      border-bottom: 1px solid var(--border-color);
+      padding: 20px 24px;
+      display: none;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+      z-index: 90;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+      animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .config-panel.active { display: grid; }
+    @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .input-field { display: flex; flex-direction: column; gap: 8px; }
+    .input-field label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .modern-input {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-main);
+      color: var(--text-main);
+      font-size: 0.9375rem;
+      outline: none;
+      transition: all 0.2s;
+    }
+    .modern-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15); }
+
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: var(--bg-sidebar);
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .modal-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .popover-item.active {
+      background: var(--bg-main);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    /* Chat Area */
+    .chat-view { flex: 1; display: flex; flex-direction: column; position: relative; }
+    
+    .model-shelf {
+      padding: 12px 24px;
+      background: var(--bg-sidebar);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .model-shelf::-webkit-scrollbar { display: none; }
+    
+    .model-card {
+      flex-shrink: 0;
+      padding: 8px 18px;
+      border-radius: 24px;
+      border: 1px solid var(--border-color);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center; gap: 8px;
+      background: var(--bg-sidebar);
+      transition: all 0.2s;
+    }
+    .model-card.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+
+    .messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+      scroll-behavior: smooth;
+    }
+    .messages-container::-webkit-scrollbar { width: 5px; }
+    .messages-container::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
+
+    /* Message Bubbles */
+    .msg-group { display: flex; flex-direction: column; max-width: 85%; animation: msgFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes msgFadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    .msg-group.user { align-self: flex-end; }
+    .msg-group.ai { align-self: flex-start; }
+
+    .msg-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .user .msg-meta { flex-direction: row-reverse; }
+
+    .avatar-circle {
+      width: 28px; height: 28px;
+      background: var(--border-color);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      box-shadow: var(--shadow);
+    }
+
+    .msg-bubble {
+      padding: 14px 20px;
+      border-radius: 20px;
+      font-size: 1rem;
+      line-height: 1.6;
+      position: relative;
+      box-shadow: var(--shadow);
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+    .msg-bubble code {
+      background: rgba(0,0,0,0.05);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 0.9em;
+    }
+    .msg-bubble pre {
+      background: rgba(0,0,0,0.05);
+      padding: 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 8px 0;
+    }
+    .msg-bubble pre code {
+      background: none;
+      padding: 0;
+    }
+    .msg-bubble strong { font-weight: 700; }
+    .msg-bubble em { font-style: italic; }
+    .msg-bubble ul, .msg-bubble ol {
+      margin: 8px 0;
+      padding-left: 24px;
+    }
+    .msg-bubble li { margin: 4px 0; }
+    .msg-bubble h1, .msg-bubble h2, .msg-bubble h3 {
+      font-weight: 700;
+      margin: 12px 0 8px 0;
+    }
+    .msg-bubble h1 { font-size: 1.5em; }
+    .msg-bubble h2 { font-size: 1.3em; }
+    .msg-bubble h3 { font-size: 1.1em; }
+    .msg-bubble blockquote {
+      border-left: 3px solid var(--primary);
+      padding-left: 12px;
+      margin: 8px 0;
+      color: var(--text-muted);
+    }
+    .user .msg-bubble {
+      background: var(--bubble-user);
+      color: white;
+      border-top-right-radius: 4px;
+    }
+    .ai .msg-bubble {
+      background: var(--bubble-ai);
+      color: var(--text-main);
+      border-top-left-radius: 4px;
+      border: 1px solid var(--border-color);
+      box-shadow: none;
+    }
+
+    /* Collapsible AI Output */
+    .collapsible-block {
+      margin-top: 10px;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+      background: var(--bg-sidebar);
+      box-shadow: var(--shadow);
+    }
+    .block-header {
+      padding: 10px 14px;
+      background: var(--bg-sidebar);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.875rem;
+      font-weight: 700;
+      transition: background 0.2s;
+      user-select: none;
+    }
+    .block-header:hover { background: var(--bg-main); }
+    .status-badge {
+      font-size: 0.75rem;
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .collapse-icon {
+      margin-left: auto;
+      font-size: 0.75rem;
+      transition: transform 0.2s ease;
+      color: var(--text-muted);
+    }
+    .block-header.expanded .collapse-icon { transform: rotate(180deg); }
+    .block-content {
+      padding: 12px;
+      background: var(--bg-main);
+      border-top: 1px solid var(--border-color);
+    }
+    .text-pane {
+      font-size: 0.9rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .think-pane {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* Input Dock */
+    .input-dock {
+      background: var(--bg-sidebar);
+      padding: 20px 24px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      align-items: flex-end;
+      gap: 16px;
+    }
+    .dock-inner {
+      flex: 1;
+      background: var(--bg-main);
+      border-radius: 24px;
+      padding: 4px 12px;
+      display: flex;
+      align-items: center;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s;
+    }
+    .dock-inner:focus-within { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); background: var(--bg-sidebar); }
+    
+    #messageInput {
+      flex: 1;
+      background: none;
+      border: none;
+      padding: 12px;
+      color: var(--text-main);
+      font-size: 1rem;
+      outline: none;
+      max-height: 150px;
+    }
+
+    .action-btn-main {
+      width: 48px; height: 48px;
+      border-radius: 16px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4);
+    }
+    .action-btn-main:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 15px 20px -5px rgba(37, 99, 235, 0.5); }
+    .action-btn-main:active { transform: translateY(0) scale(0.95); }
+
+    /* Suggestion Box */
+    .popover-menu {
+      position: absolute;
+      bottom: 100%; left: 24px;
+      background: var(--bg-sidebar);
+      border-radius: 16px;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
+      border: 1px solid var(--border-color);
+      width: 220px;
+      max-height: 250px;
+      overflow-y: auto;
+      display: none;
+      z-index: 1000;
+      margin-bottom: 10px;
+    }
+    .popover-menu.active { display: block; }
+
+    .ai-model-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 4px;
+      width: 200px;
+      background: var(--bg-sidebar);
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      border: 1px solid var(--border-color);
+      z-index: 1001;
+      display: none;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .ai-model-menu.active { display: block; }
+
+    .popover-item { padding: 12px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.2s; }
+    .popover-item:hover { background: var(--bg-main); color: var(--primary); }
+
+    .hidden { display: none !important; }
+
+    /* Advanced Panel */
+    .advanced-panel {
+      background: var(--bg-sidebar);
+      border-top: 1px solid var(--border-color);
+      padding: 16px 24px;
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .advanced-panel.active { display: flex; }
+    .advanced-toggle {
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      padding: 8px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-main);
+      transition: all 0.2s;
+    }
+    .advanced-toggle:hover { background: var(--bg-sidebar); border-color: var(--primary); }
+    .order-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .order-item {
+      background: var(--bg-main);
+      padding: 10px 14px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid var(--border-color);
+      cursor: move;
+    }
+    .order-item.dragging { opacity: 0.5; }
+    .drag-handle {
+      font-size: 1.2rem;
+      cursor: grab;
+      color: var(--text-muted);
+    }
+    .drag-handle:active { cursor: grabbing; }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-sidebar);
+      color: var(--text-main);
+      padding: 16px 24px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      border: 1px solid var(--border-color);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      max-width: 90%;
+    }
+    .toast.toast-error { border-left: 4px solid #ef4444; }
+    .toast.toast-success { border-left: 4px solid #10b981; }
+    .toast.toast-warning { border-left: 4px solid #f59e0b; }
+    .toast.toast-info { border-left: 4px solid var(--primary); }
+
+    @keyframes toastSlideIn {
+      from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+      to { transform: translateX(-50%) translateY(0); opacity: 1; }
+    }
+    @keyframes toastSlideOut {
+      from { transform: translateX(-50%) translateY(0); opacity: 1; }
+      to { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+    }
+
+    @media (max-width: 768px) {
+      .app-header { padding: 0 16px; }
+      .msg-group { max-width: 95%; }
+      .brand span:last-child { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="brand">
+      <span>議</span>
+      <span>硅基群聊 Pro</span>
+    </div>
+
+    <div class="session-selector" id="sessionSelect">
+      <span id="curSessionTitle">新对话</span>
+      <span style="font-size: 0.7rem; opacity: 0.5;">▼</span>
+    </div>
+
+    <div class="header-actions">
+      <button class="icon-btn" id="newChatBtn" title="新建对话">➕</button>
+      <button class="icon-btn" id="configToggle" title="配置中心">⚙️</button>
+      <button class="icon-btn" id="themeSwitcher" title="昼夜交替">🌓</button>
+    </div>
+  </header>
+
+  <div class="app-main">
+    <!-- Configuration -->
+    <div class="config-panel" id="configPanel">
+      <div class="input-field">
+        <label>节点端点 (Endpoint)</label>
+        <input type="text" id="apiEndpoint" class="modern-input" placeholder="https://api.siliconflow.cn/v1">
+      </div>
+      <div class="input-field">
+        <label>授权密钥 (API Key)</label>
+        <input type="password" id="apiKey" class="modern-input" placeholder="sk-...">
+      </div>
+      <div class="input-field">
+        <label>席位数量 (Model Count)</label>
+        <select id="modelLimit" class="modern-input">
+          <option value="1">1</option><option value="3" selected>3</option><option value="5">5</option><option value="8">8</option>
+        </select>
+      </div>
+      <div style="display:flex; align-items:flex-end; gap:10px;">
+        <button id="testConnection" class="modern-input" style="flex:1; background:#10b981; color:white; border:none; cursor:pointer; font-weight:700;">🔌 测试连通性</button>
+        <button id="fetchModels" class="modern-input" style="flex:1; background:#8b5cf6; color:white; border:none; cursor:pointer; font-weight:700;">📡 获取&导入模型</button>
+      </div>
+      <div style="display:flex; align-items:flex-end; gap:10px;">
+        <button id="editModels" class="modern-input" style="flex:1; background:var(--primary); color:white; border:none; cursor:pointer; font-weight:700;">✏️ 模型个性化</button>
+        <button id="manageModels" class="modern-input" style="flex:1; background:#f59e0b; color:white; border:none; cursor:pointer; font-weight:700;">🎛️ 模型管理</button>
+        <button id="dataPortal" class="modern-input" style="background:var(--bg-main); cursor:pointer;">💾</button>
+      </div>
+    </div>
+
+    <!-- Sidebar / Session Menu (Overlay) -->
+    <div class="popover-menu" id="sessionListMenu" style="bottom: auto; top: 70px; left: 50%; transform: translateX(-50%); width: 280px;">
+      <div id="sessionEntries"></div>
+    </div>
+
+    <div class="chat-view">
+      <div class="model-shelf" id="modelShelf"></div>
+
+      <div class="messages-container" id="chatWall">
+        <div style="margin: auto; text-align: center; color: var(--text-muted); opacity: 0.5;">
+          <div style="font-size: 3rem; margin-bottom: 10px;">🍵</div>
+          <p>议程尚未开始，请先配置 API 或直接发言</p>
+        </div>
+      </div>
+
+      <!-- Mention Popover -->
+      <div id="mentionMenu" class="popover-menu"></div>
+
+      <!-- Advanced Panel -->
+      <div class="advanced-panel" id="advancedPanel">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-weight: 700; font-size: 0.9rem;">🎯 回答顺序编排</span>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <div style="position: relative;">
+              <button id="aiArrangeBtn" class="modern-input" style="padding: 6px 12px; font-size: 0.8rem; background: var(--primary); color: white; border: none; cursor: pointer; display: flex; align-items: center; gap: 4px; position: relative;">
+                🤖 AI编排
+                <span id="aiModelToggle" style="font-size: 0.7rem;">▼</span>
+              </button>
+              <div id="aiModelMenu" class="ai-model-menu">
+                <div style="padding: 8px; border-bottom: 1px solid var(--border-color); font-size: 0.75rem; font-weight: 600; color: var(--text-muted);">选择编排模型</div>
+                <div id="aiModelList"></div>
+              </div>
+            </div>
+            <button id="saveOrderPresetBtn" class="modern-input" style="padding: 6px 12px; font-size: 0.8rem; cursor: pointer;">💾 保存预设</button>
+            <button id="loadOrderPresetBtn" class="modern-input" style="padding: 6px 12px; font-size: 0.8rem; cursor: pointer;">📂 加载预设</button>
+          </div>
+        </div>
+        <div id="orderList" class="order-list"></div>
+        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+          <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 12px;">🔄 工作流角色分配</div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="min-width: 80px; font-size: 0.85rem; color: var(--text-muted);">🔍 查找阶段</span>
+              <select id="workflowSearchSelect" class="modern-input" style="flex: 1; padding: 6px 10px; font-size: 0.85rem;">
+                <option value="">未分配</option>
+              </select>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="min-width: 80px; font-size: 0.85rem; color: var(--text-muted);">📋 规划阶段</span>
+              <select id="workflowPlanSelect" class="modern-input" style="flex: 1; padding: 6px 10px; font-size: 0.85rem;">
+                <option value="">未分配</option>
+              </select>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="min-width: 80px; font-size: 0.85rem; color: var(--text-muted);">📤 输出阶段</span>
+              <select id="workflowOutputSelect" class="modern-input" style="flex: 1; padding: 6px 10px; font-size: 0.85rem;">
+                <option value="">未分配</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-top: 8px; font-size: 0.75rem; color: var(--text-muted);">💡 工作流模式下，模型将按 查找→规划→输出 的顺序依次工作</div>
+        </div>
+      </div>
+
+      <div class="advanced-toggle" id="advancedToggle">
+        <span>⚙️ 高级设置</span>
+        <span id="advancedToggleIcon">▼</span>
+      </div>
+
+      <div class="input-dock">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <select id="chatModeSelect" class="modern-input" style="padding: 8px 12px; font-size: 0.85rem; cursor: pointer;" title="对话模式">
+            <option value="workflow" title="查找→规划→输出三阶段流程">🔄 工作流模式</option>
+            <option value="review" title="依次回答，同意则简述，避免重复">✅ 查验模式</option>
+            <option value="debate" title="深度讨论，可引用可反驳">💡 问答模式</option>
+          </select>
+          <select id="renderModeSelect" class="modern-input" style="padding: 8px 12px; font-size: 0.85rem; cursor: pointer;" title="渲染模式">
+            <option value="fast">⚡ Fast</option>
+            <option value="think">💭 Think</option>
+            <option value="ultra">🔥 Ultra</option>
+          </select>
+        </div>
+        <div class="dock-inner">
+          <input type="text" id="messageInput" placeholder="输入消息，或输入 @ 召唤特定模型..." autocomplete="off">
+        </div>
+        <button class="action-btn-main" id="sendBtn">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Config Modal -->
+  <div class="modal-overlay" id="modelEditorModal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">议员个性化</h3>
+        <button class="icon-btn" id="closeEditor">&times;</button>
+      </div>
+      <div id="modelEditorList" style="max-height: 50vh; overflow-y: auto; padding-right: 10px;"></div>
+      <button id="saveEditor" class="modern-input" style="width:100%; margin-top:20px; background:var(--primary); color:white; border:none; font-weight:700; cursor:pointer;">保存席位设定</button>
+    </div>
+  </div>
+
+  <!-- Data Portal Modal -->
+  <div class="modal-overlay" id="dataPortalModal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">数据管理</h3>
+        <button class="icon-btn" id="closeDataPortal">&times;</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <button id="exportData" class="modern-input" style="background:var(--primary); color:white; border:none; cursor:pointer; font-weight:600;">📤 导出备份</button>
+        <button id="importData" class="modern-input" style="background:var(--bg-main); cursor:pointer; font-weight:600;">📥 导入备份</button>
+        <button id="clearAllData" class="modern-input" style="background:#ef4444; color:white; border:none; cursor:pointer; font-weight:600;">🗑️ 清除所有数据</button>
+      </div>
+      <input type="file" id="importFileInput" accept=".json" style="display:none;">
+      <p style="font-size:0.75rem; color:var(--text-muted); margin-top:16px;">数据保存在浏览器中，清除缓存会导致数据丢失。建议定期导出备份。</p>
+    </div>
+  </div>
+
+  <!-- Model Management Modal -->
+  <div class="modal-overlay" id="modelManageModal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">模型库管理</h3>
+        <button class="icon-btn" id="closeModelManage">&times;</button>
+      </div>
+      <div style="margin-bottom: 16px;">
+        <button id="addCustomModel" class="modern-input" style="width:100%; background:var(--primary); color:white; border:none; cursor:pointer; font-weight:700;">➕ 添加自定义模型</button>
+      </div>
+      <div id="modelLibraryList" style="max-height: 50vh; overflow-y: auto;"></div>
+    </div>
+  </div>
+
+  <!-- Add Custom Model Modal -->
+  <div class="modal-overlay" id="addModelModal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">添加自定义模型</h3>
+        <button class="icon-btn" id="closeAddModel">&times;</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="input-field">
+          <label>模型ID</label>
+          <input type="text" id="newModelId" class="modern-input" placeholder="例如: gpt-4">
+        </div>
+        <div class="input-field">
+          <label>显示名称</label>
+          <input type="text" id="newModelName" class="modern-input" placeholder="例如: GPT-4">
+        </div>
+        <div class="input-field">
+          <label>图标 Emoji</label>
+          <input type="text" id="newModelIcon" class="modern-input" placeholder="例如: 🤖" maxlength="2">
+        </div>
+        <div class="input-field">
+          <label style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="newModelThink">
+            <span>支持思考链 (Reasoning)</span>
+          </label>
+        </div>
+        <button id="saveNewModel" class="modern-input" style="background:var(--primary); color:white; border:none; cursor:pointer; font-weight:700;">保存模型</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Models Modal -->
+  <div class="modal-overlay" id="importModelsModal" style="display: none;">
+    <div class="modal-content" style="max-width: 700px;">
+      <div class="modal-header">
+        <h3 class="modal-title">导入模型</h3>
+        <button class="icon-btn" id="closeImportModels">&times;</button>
+      </div>
+      <div style="margin-bottom: 16px;">
+        <input type="text" id="modelSearchInput" class="modern-input" placeholder="🔍 搜索模型..." style="width: 100%;">
+      </div>
+      <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.875rem; color: var(--text-muted);">已选择 <span id="selectedCount">0</span> 个模型</span>
+        <div style="display: flex; gap: 8px;">
+          <button id="selectAllModels" class="modern-input" style="padding: 6px 12px; cursor: pointer; font-size: 0.8rem;">全选</button>
+          <button id="deselectAllModels" class="modern-input" style="padding: 6px 12px; cursor: pointer; font-size: 0.8rem;">取消全选</button>
+        </div>
+      </div>
+      <div id="importModelsList" style="max-height: 50vh; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 12px; padding: 8px;"></div>
+      <button id="confirmImportModels" class="modern-input" style="width:100%; margin-top:16px; background:var(--primary); color:white; border:none; cursor:pointer; font-weight:700;">导入选中的模型</button>
+    </div>
+  </div>
+
+<script>
+  (function(){
+    "use strict";
+
+    const MODELS = [];
+
+    const S_KEY = 'group_chat_pro_sessions';
+    const C_KEY = 'group_chat_pro_config';
+    const M_KEY = 'group_chat_pro_models';
+
+    let state = {
+      sessions: {},
+      curId: 'default',
+      limit: 3,
+      selected: [0, 1, 2],
+      configs: [],
+      apiKey: localStorage.getItem('sf_key') || '',
+      endpoint: localStorage.getItem('sf_end') || 'https://api.siliconflow.cn/v1',
+      customModels: [],
+      fetchedModels: [],
+      selectedImportModels: new Set(),
+      renderMode: localStorage.getItem('render_mode') || 'fast',
+      modelOrder: [],
+      orderPreset: localStorage.getItem('order_preset') ? JSON.parse(localStorage.getItem('order_preset')) : null,
+      aiArrangeModelId: localStorage.getItem('ai_arrange_model') || null,
+      chatMode: localStorage.getItem('chat_mode') || 'workflow',
+      workflowRoles: localStorage.getItem('workflow_roles') ? JSON.parse(localStorage.getItem('workflow_roles')) : { search: null, plan: null, output: null }
+    };
+
+    const dom = {
+      input: document.getElementById('messageInput'),
+      wall: document.getElementById('chatWall'),
+      shelf: document.getElementById('modelShelf'),
+      send: document.getElementById('sendBtn'),
+      configPanel: document.getElementById('configPanel'),
+      sessMenu: document.getElementById('sessionListMenu'),
+      mention: document.getElementById('mentionMenu')
+    };
+
+    function init() {
+      const saved = localStorage.getItem(S_KEY);
+      if (saved) state.sessions = JSON.parse(saved);
+      const conf = localStorage.getItem(C_KEY);
+      if (conf) Object.assign(state, JSON.parse(conf));
+      const customModels = localStorage.getItem(M_KEY);
+      if (customModels) state.customModels = JSON.parse(customModels);
+
+      // Load all models from customModels (which now includes everything)
+      if (state.customModels.length > 0) {
+        MODELS.push(...state.customModels);
+      } else {
+        // First time initialization - add default models
+        const defaultModels = [
+          { id: 'deepseek-ai/DeepSeek-R1', name: 'DeepSeek-R1', think: true, ico: '🧠' },
+          { id: 'deepseek-ai/DeepSeek-V3', name: 'DeepSeek-V3', think: false, ico: '💡' },
+          { id: 'moonshotai/Kimi-K2.5', name: 'Kimi-K2.5', think: true, ico: '🚀' },
+          { id: 'Qwen/Qwen2.5-7B-Instruct', name: 'Qwen2.5-7B', think: false, ico: '🐉' },
+          { id: 'zai-org/GLM-4.6', name: 'GLM-4.6', think: false, ico: '📖' },
+          { id: 'google/gemini-2.0-flash-exp', name: 'Gemini-2.0', think: false, ico: '✨' }
+        ];
+        MODELS.push(...defaultModels);
+        state.customModels = [...defaultModels];
+        localStorage.setItem(M_KEY, JSON.stringify(state.customModels));
+      }
+
+      if (!state.sessions[state.curId]) {
+        state.sessions = { default: { name: '对话 1', messages: [], time: Date.now() } };
+        state.curId = 'default';
+      }
+
+      syncConfigs();
+      renderAll();
+      attachEvents();
+
+      document.getElementById('apiKey').value = state.apiKey;
+      document.getElementById('apiEndpoint').value = state.endpoint;
+      if(localStorage.getItem('pro_theme') === 'dark') document.body.setAttribute('data-theme', 'dark');
+    }
+
+    function syncConfigs() {
+      state.configs = state.selected.map(idx => {
+        const m = MODELS[idx];
+        const old = state.configs.find(c => c.id === m.id);
+        return { id: m.id, name: m.name, nick: old?.nick || m.name, prompt: old?.prompt || '简短有力地参与群聊议题。', ico: m.ico, think: m.think };
+      });
+
+      // Initialize model order if empty
+      if (state.modelOrder.length === 0 || state.modelOrder.length !== state.configs.length) {
+        state.modelOrder = state.configs.map((c, i) => i);
+      }
+    }
+
+    function renderOrderList() {
+      const list = document.getElementById('orderList');
+      const orderedConfigs = state.modelOrder.map(i => state.configs[i]).filter(c => c);
+
+      list.innerHTML = orderedConfigs.map((c, idx) => `
+        <div class="order-item" draggable="true" data-order-idx="${idx}">
+          <span class="drag-handle">☰</span>
+          <span style="font-size: 1.2rem;">${c.ico}</span>
+          <span style="flex: 1; font-weight: 600;">${c.nick}</span>
+          <span style="font-size: 0.75rem; color: var(--text-muted);">顺序 ${idx + 1}</span>
+        </div>
+      `).join('');
+
+      // Attach drag events
+      const items = list.querySelectorAll('.order-item');
+      items.forEach(item => {
+        item.addEventListener('dragstart', handleDragStart);
+        item.addEventListener('dragover', handleDragOver);
+        item.addEventListener('drop', handleDrop);
+        item.addEventListener('dragend', handleDragEnd);
+      });
+
+      // Render workflow role selects
+      renderWorkflowSelects();
+    }
+
+    function renderWorkflowSelects() {
+      const selects = ['workflowSearchSelect', 'workflowPlanSelect', 'workflowOutputSelect'];
+      const roles = ['search', 'plan', 'output'];
+
+      selects.forEach((selectId, idx) => {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+
+        select.innerHTML = '<option value="">未分配</option>' +
+          state.configs.map(c => `<option value="${c.id}" ${state.workflowRoles[roles[idx]] === c.id ? 'selected' : ''}>${c.ico} ${c.nick}</option>`).join('');
+
+        select.onchange = (e) => {
+          state.workflowRoles[roles[idx]] = e.target.value || null;
+          localStorage.setItem('workflow_roles', JSON.stringify(state.workflowRoles));
+          showToast(`${['查找', '规划', '输出'][idx]}阶段已更新`, 'info');
+        };
+      });
+    }
+
+    let draggedItem = null;
+
+    function handleDragStart(e) {
+      draggedItem = this;
+      this.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const afterElement = getDragAfterElement(e.currentTarget.parentElement, e.clientY);
+      if (afterElement == null) {
+        e.currentTarget.parentElement.appendChild(draggedItem);
+      } else {
+        e.currentTarget.parentElement.insertBefore(draggedItem, afterElement);
+      }
+    }
+
+    function handleDrop(e) {
+      e.preventDefault();
+      updateOrderFromDOM();
+    }
+
+    function handleDragEnd(e) {
+      this.classList.remove('dragging');
+      draggedItem = null;
+    }
+
+    function getDragAfterElement(container, y) {
+      const draggableElements = [...container.querySelectorAll('.order-item:not(.dragging)')];
+      return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+          return { offset: offset, element: child };
+        } else {
+          return closest;
+        }
+      }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    function updateOrderFromDOM() {
+      const items = document.querySelectorAll('.order-item');
+      const newOrder = [];
+      items.forEach(item => {
+        const idx = parseInt(item.dataset.orderIdx);
+        const originalIdx = state.modelOrder[idx];
+        newOrder.push(originalIdx);
+      });
+      state.modelOrder = newOrder;
+      renderOrderList();
+      showToast('顺序已更新', 'success');
+    }
+
+    function saveOrderPreset() {
+      // Save model IDs instead of indices
+      const orderIds = state.modelOrder.map(i => state.configs[i]?.id).filter(id => id);
+      state.orderPreset = orderIds;
+      localStorage.setItem('order_preset', JSON.stringify(state.orderPreset));
+      showToast('预设已保存', 'success');
+    }
+
+    function loadOrderPreset() {
+      if (!state.orderPreset || state.orderPreset.length === 0) {
+        showToast('没有可用的预设', 'warning');
+        return;
+      }
+
+      // Convert model IDs back to current indices
+      const newOrder = [];
+      state.orderPreset.forEach(id => {
+        const idx = state.configs.findIndex(c => c.id === id);
+        if (idx !== -1) {
+          newOrder.push(idx);
+        }
+      });
+
+      if (newOrder.length === 0) {
+        showToast('预设中的模型都不存在', 'warning');
+        return;
+      }
+
+      // Add missing models that are in configs but not in preset
+      state.configs.forEach((c, idx) => {
+        if (!newOrder.includes(idx)) {
+          newOrder.push(idx);
+        }
+      });
+
+      state.modelOrder = newOrder;
+      renderOrderList();
+      showToast('预设已加载', 'success');
+    }
+
+    function renderAiModelMenu() {
+      const menu = document.getElementById('aiModelList');
+      menu.innerHTML = state.configs.map(c => `
+        <div class="popover-item" data-model-id="${c.id}" style="padding: 10px 12px; cursor: pointer;">
+          <input type="radio" name="aiArrangeModel" value="${c.id}" ${state.aiArrangeModelId === c.id ? 'checked' : ''} style="margin-right: 8px; cursor: pointer;">
+          <span>${c.ico}</span>
+          <span style="margin-left: 6px;">${c.nick}</span>
+        </div>
+      `).join('');
+
+      // Attach events
+      menu.querySelectorAll('.popover-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          const modelId = item.dataset.modelId;
+          state.aiArrangeModelId = modelId;
+          localStorage.setItem('ai_arrange_model', state.aiArrangeModelId);
+          document.getElementById('aiModelMenu').classList.remove('active');
+          showToast(`已选择 ${state.configs.find(c => c.id === modelId)?.nick}`, 'info');
+        });
+      });
+    }
+
+    async function aiArrangeOrder() {
+      if (!state.apiKey) {
+        showToast('请先设置API密钥', 'error');
+        return;
+      }
+
+      if (state.configs.length === 0) {
+        showToast('请先选择模型', 'error');
+        return;
+      }
+
+      // Auto-select first model if none selected
+      if (!state.aiArrangeModelId || !state.configs.find(c => c.id === state.aiArrangeModelId)) {
+        state.aiArrangeModelId = state.configs[0].id;
+        localStorage.setItem('ai_arrange_model', state.aiArrangeModelId);
+      }
+
+      const btn = document.getElementById('aiArrangeBtn');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '⏳ AI思考中... <span style="font-size: 0.7rem;">▼</span>';
+      btn.disabled = true;
+
+      try {
+        const modelList = state.configs.map((c, i) => `${i + 1}. ${c.nick} (${c.name}) - ${c.prompt}`).join('\n');
+        const prompt = `你是一个AI助手编排专家。现在有以下AI模型需要按照最佳讨论顺序排列：
+
+${modelList}
+
+请根据以下原则编排回答顺序：
+1. 思考型模型（支持推理）应该先发言，提供深度分析
+2. 通用型模型跟进，补充观点
+3. 专业型模型最后总结
+
+请直接返回最佳顺序的数字序号，用逗号分隔，例如：1,3,2
+只返回数字序号，不要其他解释。`;
+
+        const modelToUse = state.configs.find(c => c.id === state.aiArrangeModelId);
+
+        const response = await fetch(`${state.endpoint}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: modelToUse.id,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3,
+            max_tokens: 100
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const result = data.choices[0].message.content.trim();
+          const orderStr = result.match(/[\d,\s]+/)?.[0] || '';
+          const newOrder = orderStr.split(',').map(n => parseInt(n.trim()) - 1).filter(n => n >= 0 && n < state.configs.length);
+
+          if (newOrder.length === state.configs.length && new Set(newOrder).size === newOrder.length) {
+            state.modelOrder = newOrder;
+            renderOrderList();
+            showToast('AI编排完成！', 'success');
+          } else {
+            showToast('AI编排结果无效，请手动调整', 'warning');
+          }
+        } else {
+          const errorText = await response.text();
+          showToast(`AI编排失败: ${response.status}`, 'error');
+          console.error('AI编排错误:', errorText);
+        }
+      } catch (e) {
+        showToast(`AI编排错误: ${e.message}`, 'error');
+        console.error('AI编排异常:', e);
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    function renderAll() {
+      // Model Shelf
+      dom.shelf.innerHTML = MODELS.map((m, i) => `
+        <div class="model-card ${state.selected.includes(i) ? 'active' : ''}" data-idx="${i}">
+          <span>${m.ico}</span>
+          <span>${m.name}</span>
+          ${m.think ? '<span style="font-size: 0.65rem; opacity: 0.8; margin-left: 4px;">💭</span>' : ''}
+        </div>
+      `).join('');
+
+      // Messages
+      const sess = state.sessions[state.curId];
+      document.getElementById('curSessionTitle').textContent = sess.name;
+
+      if (sess.messages.length === 0) {
+        dom.wall.innerHTML = `<div style="margin: auto; text-align: center; color: var(--text-muted); opacity: 0.5;"><div style="font-size: 3rem; margin-bottom: 10px;">🍵</div><p>议程尚未开始</p></div>`;
+      } else {
+        dom.wall.innerHTML = sess.messages.map((m, i) => {
+          const thinkId = `think-${i}`;
+          const answerId = `answer-${i}`;
+          const thinkStatus = getMessageThinkStatus(m);
+          const answerStatus = getMessageAnswerStatus(m);
+          const showThinkBlock = m.role === 'assistant' && (thinkStatus !== 'none' || !!m.thinkTxt);
+
+          if (m.role === 'user') {
+            return `
+              <div class="msg-group user">
+                <div class="msg-meta">
+                  <div class="avatar-circle">${m.ico || '👤'}</div>
+                  <span>${m.nick || '访客'}</span>
+                </div>
+                <div class="msg-bubble">${parseMarkdown(m.txt || '')}</div>
+              </div>
+            `;
+          }
+
+          return `
+            <div class="msg-group ai">
+              <div class="msg-meta">
+                <div class="avatar-circle">${m.ico || '👤'}</div>
+                <span>${m.nick || '访客'}</span>
+              </div>
+              ${showThinkBlock ? `
+                <div class="collapsible-block think-block">
+                  <div class="block-header" data-target="${thinkId}">
+                    <span>💭 思考过程</span>
+                    <span class="status-badge">${getThinkStatusText(thinkStatus)}</span>
+                    <span class="collapse-icon">▼</span>
+                  </div>
+                  <div class="block-content hidden" id="${thinkId}">
+                    <div class="text-pane think-pane">${escape(m.thinkTxt || '思考中...')}</div>
+                  </div>
+                </div>
+              ` : ''}
+              <div class="collapsible-block answer-block">
+                <div class="block-header" data-target="${answerId}">
+                  <span>📝 回答内容</span>
+                  <span class="status-badge">${getAnswerStatusText(answerStatus)}</span>
+                  <span class="collapse-icon">▼</span>
+                </div>
+                <div class="block-content hidden" id="${answerId}">
+                  <div class="msg-bubble">${parseMarkdown(m.txt || '等待回答...')}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        dom.wall.querySelectorAll('.block-header').forEach(header => {
+          header.addEventListener('click', () => {
+            const target = document.getElementById(header.dataset.target);
+            if (target) {
+              target.classList.toggle('hidden');
+              header.classList.toggle('expanded');
+            }
+          });
+        });
+      }
+      dom.wall.scrollTop = dom.wall.scrollHeight;
+    }
+
+    async function send() {
+      const txt = dom.input.value.trim();
+      if (!txt) return;
+      if (!state.apiKey) { showToast('请先设置API密钥', 'error'); return; }
+
+      const sess = state.sessions[state.curId];
+      sess.messages.push({ role: 'user', txt, nick: '议长', ico: '⚖️' });
+      renderAll();
+      dom.input.value = '';
+      dom.send.disabled = true;
+
+      const mentions = txt.match(/@(\S+)/g)?.map(s => s.slice(1)) || [];
+
+      // Different modes
+      switch (state.chatMode) {
+        case 'workflow':
+          await executeWorkflow(txt, sess);
+          break;
+        case 'review':
+          await executeReviewMode(txt, sess);
+          break;
+        case 'debate':
+          await executeDebateMode(txt, sess);
+          break;
+        default:
+          await executeWorkflow(txt, sess);
+      }
+
+      dom.send.disabled = false;
+    }
+
+    async function executeParallelMode(userMsg, sess, mentions = []) {
+      let targets = mentions.length ? state.configs.filter(c => mentions.includes(c.nick)) : state.configs;
+
+      // Apply order if no mentions
+      if (mentions.length === 0 && state.modelOrder.length === state.configs.length) {
+        targets = state.modelOrder.map(i => state.configs[i]).filter(c => c);
+      }
+
+      for (const model of targets) {
+        await executeModelResponse(model, userMsg, sess);
+      }
+    }
+
+    async function executeReviewMode(userMsg, sess) {
+      let targets = state.configs;
+      if (state.modelOrder.length === state.configs.length) {
+        targets = state.modelOrder.map(i => state.configs[i]).filter(c => c);
+      }
+
+      const responses = [];
+
+      for (const model of targets) {
+        const previousResponses = responses.map(r => `[${r.nick}]: ${r.content}`).join('\n\n');
+
+        let prompt = userMsg;
+        if (previousResponses) {
+          prompt = `【查验模式】以下是其他AI的回答：
+
+${previousResponses}
+
+用户问题：${userMsg}
+
+请审查以上回答。如果你完全同意某个回答，只需说"同意 [AI名称] 的观点"并简要说明理由。如果有不同见解或补充，请详细阐述。避免重复已有的正确观点。`;
+        }
+
+        const response = await executeModelResponse(model, userMsg, sess, prompt);
+        if (response) {
+          responses.push({ nick: model.nick, content: response });
+        }
+      }
+    }
+
+    async function executeDebateMode(userMsg, sess) {
+      let targets = state.configs;
+      if (state.modelOrder.length === state.configs.length) {
+        targets = state.modelOrder.map(i => state.configs[i]).filter(c => c);
+      }
+
+      const responses = [];
+
+      for (const model of targets) {
+        const previousResponses = responses.map(r => `[${r.nick}]: ${r.content}`).join('\n\n');
+
+        let prompt = userMsg;
+        if (previousResponses) {
+          prompt = `【问答模式】以下是其他AI的观点：
+
+${previousResponses}
+
+用户问题：${userMsg}
+
+请发表你的见解。你可以：
+1. 引用其他AI的观点并表示赞同
+2. 提出不同的看法并说明理由
+3. 补充新的角度和信息
+4. 指出其他观点的不足之处
+
+鼓励建设性的讨论和观点碰撞。`;
+        }
+
+        const response = await executeModelResponse(model, userMsg, sess, prompt);
+        if (response) {
+          responses.push({ nick: model.nick, content: response });
+        }
+      }
+    }
+
+    async function executeModelResponse(model, userMsg, sess, contextMsg = null) {
+      const idx = sess.messages.length;
+      sess.messages.push({
+        role: 'assistant',
+        txt: '',
+        thinkTxt: '',
+        thinkStatus: model.think ? 'pending' : 'none',
+        answerStatus: 'pending',
+        nick: model.nick,
+        ico: model.ico
+      });
+
+      if (state.renderMode === 'fast') {
+        renderAll();
+      }
+
+      try {
+        let buffer = '';
+        let thinkingBuffer = '';
+        let lastRenderTime = Date.now();
+        const renderInterval = state.renderMode === 'fast' ? 100 : state.renderMode === 'think' ? 300 : 500;
+
+        await stream(model, contextMsg || userMsg, sess, (chunk, thinking) => {
+          buffer = chunk;
+          thinkingBuffer = thinking;
+          const now = Date.now();
+
+          if (thinkingBuffer) {
+            sess.messages[idx].thinkTxt = thinkingBuffer;
+            if (sess.messages[idx].thinkStatus === 'pending') {
+              sess.messages[idx].thinkStatus = 'thinking';
+            }
+          }
+
+          if (buffer) {
+            sess.messages[idx].txt = buffer;
+            if (sess.messages[idx].answerStatus === 'pending') {
+              sess.messages[idx].answerStatus = 'answering';
+            }
+            if (sess.messages[idx].thinkStatus === 'thinking') {
+              sess.messages[idx].thinkStatus = 'done';
+            }
+          }
+
+          if (now - lastRenderTime >= renderInterval) {
+            renderAll();
+            lastRenderTime = now;
+          }
+        }, (final, th) => {
+          sess.messages[idx].txt = final || '(无内容)';
+          sess.messages[idx].thinkTxt = th || '';
+          sess.messages[idx].thinkStatus = th ? 'done' : 'none';
+          sess.messages[idx].answerStatus = 'done';
+          renderAll();
+          save();
+        });
+
+        return sess.messages[idx].txt;
+      } catch(e) {
+        sess.messages[idx].txt = '⚠️ 连接中断: ' + e.message;
+        sess.messages[idx].thinkStatus = sess.messages[idx].thinkTxt ? 'done' : 'none';
+        sess.messages[idx].answerStatus = 'done';
+        renderAll();
+        save();
+        return null;
+      }
+    }
+
+    async function executeWorkflow(userMsg, sess) {
+      const { search, plan, output } = state.workflowRoles;
+
+      if (!search || !plan || !output) {
+        showToast('请先在高级设置中配置工作流角色', 'warning');
+        return;
+      }
+
+      const searchModel = state.configs.find(c => c.id === search);
+      const planModel = state.configs.find(c => c.id === plan);
+      const outputModel = state.configs.find(c => c.id === output);
+
+      if (!searchModel || !planModel || !outputModel) {
+        showToast('工作流角色配置无效', 'error');
+        return;
+      }
+
+      // Stage 1: Search
+      const searchPrompt = `【查找阶段】请分析以下问题，提取关键信息和需要查找的要点：\n\n${userMsg}`;
+      const searchResult = await executeModelResponse(searchModel, userMsg, sess, searchPrompt);
+
+      if (!searchResult) return;
+
+      // Stage 2: Plan
+      const planPrompt = `【规划阶段】基于查找结果，制定解决方案：\n\n用户问题：${userMsg}\n\n查找结果：${searchResult}\n\n请制定详细的解决方案和步骤。`;
+      const planResult = await executeModelResponse(planModel, userMsg, sess, planPrompt);
+
+      if (!planResult) return;
+
+      // Stage 3: Output
+      const outputPrompt = `【输出阶段】基于前面的分析和规划，给出最终答案：\n\n用户问题：${userMsg}\n\n查找结果：${searchResult}\n\n规划方案：${planResult}\n\n请给出清晰、完整的最终答案。`;
+      await executeModelResponse(outputModel, userMsg, sess, outputPrompt);
+    }
+
+    async function stream(conf, msg, sess, onChunk, onDone) {
+      const hist = sess.messages.slice(-8).map(m => ({ role: m.role, content: `[${m.nick}]: ${m.txt}` }));
+
+      // Build group chat context
+      const otherMembers = state.configs.filter(c => c.id !== conf.id).map(c => c.nick).join('、');
+      const groupContext = `你正在参与一个多AI群聊议会。
+
+【你的身份】${conf.nick}
+【其他成员】${otherMembers || '暂无'}
+【议会规则】
+- 这是一个协作讨论环境，每个AI都有独特视角
+- 你可以引用其他成员的观点进行回应
+- 鼓励建设性讨论和观点碰撞
+- 保持简洁有力，避免冗长重复
+
+${conf.prompt}`;
+
+      const res = await fetch(`${state.endpoint}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.apiKey}` },
+        body: JSON.stringify({
+          model: conf.id,
+          messages: [{ role: 'system', content: groupContext }, ...hist, { role: 'user', content: msg }],
+          stream: true,
+          temperature: 0.7,
+          max_tokens: 2048
+        })
+      });
+
+      if (!res.ok) throw new Error(`API错误 ${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let full = '', th = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const lines = decoder.decode(value).split('\n').filter(l => l.startsWith('data: '));
+        for (const l of lines) {
+          const raw = l.slice(6).trim();
+          if (raw === '[DONE]') continue;
+          try {
+            const data = JSON.parse(raw);
+            const delta = data.choices?.[0]?.delta;
+            if (delta?.reasoning_content) th += delta.reasoning_content;
+            if (delta?.content) full += delta.content;
+            if (delta?.reasoning_content || delta?.content) onChunk(full, th);
+          } catch(e) {}
+        }
+      }
+      onDone(full, th);
+    }
+
+    function toggleModel(i) {
+      if (state.selected.includes(i)) {
+        state.selected = state.selected.filter(x => x !== i);
+      } else if (state.selected.length < state.limit) {
+        state.selected.push(i);
+      } else {
+        showToast(`席位已满！当前限制为 ${state.limit} 个模型`, 'warning');
+        return;
+      }
+      syncConfigs(); save(); renderAll();
+    }
+
+    function attachEvents() {
+      dom.send.onclick = send;
+      dom.input.onkeydown = e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          send();
+        }
+      };
+
+      // Render mode selector
+      const renderModeSelect = document.getElementById('renderModeSelect');
+      renderModeSelect.value = state.renderMode;
+      renderModeSelect.onchange = (e) => {
+        state.renderMode = e.target.value;
+        localStorage.setItem('render_mode', state.renderMode);
+        const modeNames = { fast: '⚡ Fast 模式', think: '💭 Think 模式', ultra: '🔥 Ultra 模式' };
+        showToast(`已切换到 ${modeNames[state.renderMode]}`, 'info');
+      };
+
+      // Chat mode selector
+      const chatModeSelect = document.getElementById('chatModeSelect');
+      chatModeSelect.value = state.chatMode;
+      chatModeSelect.onchange = (e) => {
+        state.chatMode = e.target.value;
+        localStorage.setItem('chat_mode', state.chatMode);
+        const modeNames = {
+          workflow: '🔄 工作流模式',
+          review: '✅ 查验模式',
+          debate: '💡 问答模式'
+        };
+        showToast(`已切换到 ${modeNames[state.chatMode]}`, 'info');
+      };
+
+      // Model shelf - use event delegation
+      dom.shelf.addEventListener('click', (e) => {
+        const card = e.target.closest('.model-card');
+        if (card) {
+          const idx = parseInt(card.dataset.idx);
+          toggleModel(idx);
+        }
+      });
+
+      // New chat button
+      document.getElementById('newChatBtn').onclick = createNewSession;
+
+      document.getElementById('configToggle').onclick = () => dom.configPanel.classList.toggle('active');
+      document.getElementById('themeSwitcher').onclick = () => {
+        const d = document.body.getAttribute('data-theme') === 'dark';
+        document.body.setAttribute('data-theme', d ? 'light' : 'dark');
+        localStorage.setItem('pro_theme', d ? 'light' : 'dark');
+      };
+
+      document.getElementById('sessionSelect').onclick = e => {
+        e.stopPropagation();
+        const isActive = dom.sessMenu.style.display === 'block';
+        dom.sessMenu.style.display = isActive ? 'none' : 'block';
+        if (!isActive) renderSessMenu();
+      };
+
+      dom.input.oninput = e => {
+        const v = e.target.value;
+        const cur = e.target.selectionStart;
+        const lastAt = v.lastIndexOf('@', cur - 1);
+        if (lastAt !== -1 && lastAt < cur) {
+          const q = v.slice(lastAt + 1, cur).toLowerCase();
+          if (!q.includes(' ')) {
+            const ms = state.configs.filter(c => c.nick.toLowerCase().includes(q));
+            if (ms.length) {
+              dom.mention.style.display = 'block';
+              dom.mention.innerHTML = ms.map(m => `<div class="popover-item" data-nick="${m.nick}" data-start="${lastAt}" data-end="${cur}">${m.ico} ${m.nick}</div>`).join('');
+
+              // Attach click events
+              dom.mention.querySelectorAll('.popover-item').forEach(item => {
+                item.addEventListener('click', () => {
+                  const nick = item.dataset.nick;
+                  const start = parseInt(item.dataset.start);
+                  const end = parseInt(item.dataset.end);
+                  const val = dom.input.value;
+                  dom.input.value = val.slice(0, start) + '@' + nick + ' ' + val.slice(end);
+                  dom.mention.style.display = 'none';
+                  dom.input.focus();
+                });
+              });
+              return;
+            }
+          }
+        }
+        dom.mention.style.display = 'none';
+      };
+
+      document.getElementById('apiKey').onchange = e => { state.apiKey = e.target.value; localStorage.setItem('sf_key', state.apiKey); };
+      document.getElementById('apiEndpoint').onchange = e => { state.endpoint = e.target.value; localStorage.setItem('sf_end', state.endpoint); };
+      document.getElementById('modelLimit').onchange = e => { state.limit = parseInt(e.target.value); save(); };
+
+      document.getElementById('editModels').onclick = () => {
+        const list = document.getElementById('modelEditorList');
+        list.innerHTML = state.configs.map((c, i) => `
+          <div style="margin-bottom:15px; padding:12px; background:var(--bg-main); border-radius:12px;">
+            <div style="font-weight:800; margin-bottom:8px;">${c.ico} ${c.name}</div>
+            <input class="e-nick modern-input" data-i="${i}" value="${c.nick}" style="width:100%; margin-bottom:8px;" placeholder="昵称">
+            <textarea class="e-prompt modern-input" data-i="${i}" style="width:100%; height:60px;" placeholder="System Prompt">${c.prompt}</textarea>
+          </div>
+        `).join('');
+        document.getElementById('modelEditorModal').style.display = 'flex';
+      };
+
+      document.getElementById('saveEditor').onclick = () => {
+        document.querySelectorAll('.e-nick').forEach(el => state.configs[el.dataset.i].nick = el.value);
+        document.querySelectorAll('.e-prompt').forEach(el => state.configs[el.dataset.i].prompt = el.value);
+        document.getElementById('modelEditorModal').style.display = 'none';
+        save(); renderAll();
+      };
+
+      document.getElementById('closeEditor').onclick = () => document.getElementById('modelEditorModal').style.display = 'none';
+
+      // API Testing
+      document.getElementById('testConnection').onclick = testConnection;
+      document.getElementById('fetchModels').onclick = fetchAvailableModels;
+
+      // Model Management
+      document.getElementById('manageModels').onclick = openModelManage;
+      document.getElementById('closeModelManage').onclick = () => document.getElementById('modelManageModal').style.display = 'none';
+      document.getElementById('addCustomModel').onclick = openAddModel;
+      document.getElementById('closeAddModel').onclick = () => document.getElementById('addModelModal').style.display = 'none';
+      document.getElementById('saveNewModel').onclick = saveNewModel;
+
+      // Import Models
+      document.getElementById('closeImportModels').onclick = () => document.getElementById('importModelsModal').style.display = 'none';
+      document.getElementById('modelSearchInput').oninput = (e) => renderImportModelsList(e.target.value);
+      document.getElementById('selectAllModels').onclick = selectAllImportModels;
+      document.getElementById('deselectAllModels').onclick = deselectAllImportModels;
+      document.getElementById('confirmImportModels').onclick = confirmImportModels;
+
+      // Advanced Panel
+      document.getElementById('advancedToggle').onclick = () => {
+        const panel = document.getElementById('advancedPanel');
+        const icon = document.getElementById('advancedToggleIcon');
+        panel.classList.toggle('active');
+        icon.textContent = panel.classList.contains('active') ? '▲' : '▼';
+        if (panel.classList.contains('active')) {
+          renderOrderList();
+        }
+      };
+      document.getElementById('saveOrderPresetBtn').onclick = saveOrderPreset;
+      document.getElementById('loadOrderPresetBtn').onclick = loadOrderPreset;
+
+      // AI Arrange model selector
+      document.getElementById('aiArrangeBtn').onclick = (e) => {
+        const menu = document.getElementById('aiModelMenu');
+        const toggle = document.getElementById('aiModelToggle');
+
+        if (e.target === toggle || toggle.contains(e.target)) {
+          e.stopPropagation();
+          menu.classList.toggle('active');
+          if (menu.classList.contains('active')) {
+            renderAiModelMenu();
+          }
+        } else {
+          menu.classList.remove('active');
+          aiArrangeOrder();
+        }
+      };
+
+      document.addEventListener('click', (e) => {
+        const menu = document.getElementById('aiModelMenu');
+        const btn = document.getElementById('aiArrangeBtn');
+        if (menu && !btn.contains(e.target)) {
+          menu.classList.remove('active');
+        }
+      });
+
+      // Data Portal
+      document.getElementById('dataPortal').onclick = () => {
+        document.getElementById('dataPortalModal').style.display = 'flex';
+      };
+      document.getElementById('closeDataPortal').onclick = () => document.getElementById('dataPortalModal').style.display = 'none';
+      document.getElementById('exportData').onclick = exportAllData;
+      document.getElementById('importData').onclick = () => document.getElementById('importFileInput').click();
+      document.getElementById('importFileInput').onchange = e => {
+        if (e.target.files[0]) {
+          importAllData(e.target.files[0]);
+          e.target.value = '';
+        }
+      };
+      document.getElementById('clearAllData').onclick = clearAllData;
+
+      document.addEventListener('click', (e) => {
+        if (!dom.sessMenu.contains(e.target) && !document.getElementById('sessionSelect').contains(e.target)) {
+          dom.sessMenu.style.display = 'none';
+        }
+        if (!dom.mention.contains(e.target) && e.target !== dom.input) {
+          dom.mention.style.display = 'none';
+        }
+      });
+    }
+
+    function renderSessMenu() {
+      const list = Object.keys(state.sessions).sort((a,b) => state.sessions[b].time - state.sessions[a].time);
+      document.getElementById('sessionEntries').innerHTML = list.map(id => {
+        const sess = state.sessions[id];
+        const preview = sess.messages.length > 0 ? sess.messages[sess.messages.length - 1].txt.slice(0, 30) + '...' : '暂无消息';
+        return `
+        <div class="popover-item ${id === state.curId ? 'active' : ''}" data-sess-id="${id}">
+          <div style="flex:1;">
+            <div style="font-weight: 600; margin-bottom: 2px;">${sess.name}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); opacity: 0.7;">${preview}</div>
+          </div>
+          ${list.length > 1 ? `<span class="del-sess" data-sess-id="${id}" style="opacity:0.3; cursor:pointer; font-size: 1.2rem;">&times;</span>` : ''}
+        </div>
+      `;
+      }).join('');
+
+      // Attach click events
+      document.getElementById('sessionEntries').querySelectorAll('.popover-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+          if (e.target.classList.contains('del-sess')) {
+            e.stopPropagation();
+            const id = e.target.dataset.sessId;
+            if (Object.keys(state.sessions).length > 1) {
+              if (confirm('确定删除此对话？')) {
+                delete state.sessions[id];
+                if (state.curId === id) state.curId = Object.keys(state.sessions)[0];
+                save(); renderAll(); renderSessMenu();
+                showToast('对话已删除', 'success');
+              }
+            } else {
+              showToast('至少需要保留一个对话', 'warning');
+            }
+          } else {
+            const id = item.dataset.sessId;
+            state.curId = id;
+            renderAll();
+            save();
+            dom.sessMenu.style.display = 'none';
+          }
+        });
+      });
+    }
+
+    function createNewSession() {
+      const id = 's' + Date.now();
+      const count = Object.keys(state.sessions).length + 1;
+      state.sessions[id] = { name: `对话 ${count}`, messages: [], time: Date.now() };
+      state.curId = id;
+      save();
+      renderAll();
+      showToast('新对话已创建', 'success');
+    }
+
+    function exportAllData() {
+      const data = {
+        sessions: state.sessions,
+        config: { limit: state.limit, selected: state.selected, configs: state.configs, curId: state.curId },
+        exportTime: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `群聊备份_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+    }
+
+    function importAllData(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.sessions) state.sessions = data.sessions;
+          if (data.config) {
+            state.limit = data.config.limit || 3;
+            state.selected = data.config.selected || [0, 1, 2];
+            state.configs = data.config.configs || [];
+            state.curId = data.config.curId || 'default';
+          }
+          if (!state.sessions[state.curId]) state.curId = Object.keys(state.sessions)[0] || 'default';
+          syncConfigs();
+          save();
+          renderAll();
+          document.getElementById('dataPortalModal').style.display = 'none';
+          alert('✅ 数据导入成功！');
+        } catch(e) {
+          alert('❌ 导入失败：文件格式错误');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function clearAllData() {
+      if (confirm('确定清除所有对话记录和配置？此操作不可恢复！')) {
+        state.sessions = { default: { name: '开幕议程', messages: [], time: Date.now() } };
+        state.curId = 'default';
+        state.selected = [0, 1, 2];
+        state.limit = 3;
+        syncConfigs();
+        save();
+        renderAll();
+        document.getElementById('dataPortalModal').style.display = 'none';
+        alert('✅ 数据已清除');
+      }
+    }
+
+    function save() {
+      localStorage.setItem(S_KEY, JSON.stringify(state.sessions));
+      localStorage.setItem(C_KEY, JSON.stringify({ limit: state.limit, selected: state.selected, configs: state.configs, curId: state.curId }));
+      localStorage.setItem(M_KEY, JSON.stringify(state.customModels));
+    }
+
+    function escape(t) {
+      const d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+
+    function parseMarkdown(text) {
+      let html = escape(text);
+
+      // Code blocks
+      html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+
+      // Inline code
+      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+      // Headers
+      html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+      html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+      html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+      // Bold
+      html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+      // Italic
+      html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+      html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+
+      // Blockquote
+      html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+
+      // Unordered lists
+      html = html.replace(/^\- (.+)$/gm, '<li>$1</li>');
+      html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+
+      // Ordered lists
+      html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+      // Line breaks
+      html = html.replace(/\n/g, '<br>');
+
+      return html;
+    }
+
+    function getThinkStatusText(status) {
+      return {
+        pending: '【思考中】',
+        thinking: '【思考中】',
+        done: '【思考完毕】',
+        none: ''
+      }[status] || '';
+    }
+
+    function getAnswerStatusText(status) {
+      return {
+        pending: '【回答中】',
+        answering: '【回答中】',
+        done: '【回答完毕】'
+      }[status] || '';
+    }
+
+    function getMessageThinkStatus(message) {
+      if (message.thinkStatus) return message.thinkStatus;
+      if (message.thinkTxt) return 'done';
+      return 'none';
+    }
+
+    function getMessageAnswerStatus(message) {
+      if (message.answerStatus) return message.answerStatus;
+      if (message.txt) return 'done';
+      return 'pending';
+    }
+
+    // Toast Notification System
+    function showToast(message, type = 'info') {
+      const icons = {
+        error: '❌',
+        success: '✅',
+        warning: '⚠️',
+        info: 'ℹ️'
+      };
+
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.innerHTML = `
+        <span style="font-size: 1.25rem;">${icons[type]}</span>
+        <span>${message}</span>
+      `;
+
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.animation = 'toastSlideOut 0.3s cubic-bezier(0.16, 1, 0.3, 1)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // API Testing Functions
+    async function testConnection() {
+      if (!state.apiKey) {
+        showToast('请先设置API密钥', 'error');
+        return;
+      }
+      if (!state.endpoint) {
+        showToast('请先设置API端点', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('testConnection');
+      const originalText = btn.textContent;
+      btn.textContent = '⏳ 测试中...';
+      btn.disabled = true;
+
+      try {
+        const response = await fetch(`${state.endpoint}/models`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${state.apiKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          showToast(`连接成功！检测到 ${data.data?.length || 0} 个可用模型`, 'success');
+        } else {
+          const error = await response.text();
+          showToast(`连接失败 (${response.status})`, 'error');
+        }
+      } catch (e) {
+        showToast(`网络错误: ${e.message}`, 'error');
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    async function fetchAvailableModels() {
+      if (!state.apiKey) {
+        showToast('请先设置API密钥', 'error');
+        return;
+      }
+      if (!state.endpoint) {
+        showToast('请先设置API端点', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('fetchModels');
+      const originalText = btn.textContent;
+      btn.textContent = '⏳ 获取中...';
+      btn.disabled = true;
+
+      try {
+        const response = await fetch(`${state.endpoint}/models`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${state.apiKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const models = data.data || [];
+
+          if (models.length === 0) {
+            showToast('未获取到任何模型', 'warning');
+            return;
+          }
+
+          // Store fetched models and open import modal
+          state.fetchedModels = models.map(m => ({
+            id: m.id || m.name || 'unknown',
+            name: m.id || m.name || 'Unknown Model',
+            ico: '🤖',
+            think: false,
+            builtin: false
+          }));
+          state.selectedImportModels.clear();
+
+          openImportModelsModal();
+          showToast(`成功获取 ${models.length} 个模型`, 'success');
+        } else {
+          const error = await response.text();
+          showToast(`获取失败 (${response.status})`, 'error');
+        }
+      } catch (e) {
+        showToast(`网络错误: ${e.message}`, 'error');
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    // Model Management Functions
+    function openModelManage() {
+      renderModelLibrary();
+      document.getElementById('modelManageModal').style.display = 'flex';
+    }
+
+    function renderModelLibrary() {
+      const list = document.getElementById('modelLibraryList');
+      list.innerHTML = MODELS.map((m, i) => `
+        <div style="padding: 12px; margin-bottom: 8px; background: var(--bg-main); border-radius: 12px; display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 1.5rem;">${m.ico}</span>
+            <div>
+              <div style="font-weight: 700;">${m.name}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">${m.id}</div>
+              ${m.think ? '<span style="font-size: 0.7rem; background: var(--primary); color: white; padding: 2px 6px; border-radius: 8px;">💭 思考链</span>' : ''}
+            </div>
+          </div>
+          <button class="icon-btn del-model-btn" data-idx="${i}" style="color: #ef4444; ${MODELS.length <= 1 ? 'opacity: 0.3; cursor: not-allowed;' : ''}">🗑️</button>
+        </div>
+      `).join('');
+
+      // Attach delete events
+      list.querySelectorAll('.del-model-btn').forEach(btn => {
+        const idx = parseInt(btn.dataset.idx);
+        if (MODELS.length > 1) {
+          btn.addEventListener('click', () => deleteCustomModel(idx));
+        }
+      });
+    }
+
+    function deleteCustomModel(idx) {
+      if (MODELS.length <= 1) {
+        showToast('至少需要保留一个模型', 'warning');
+        return;
+      }
+
+      if (confirm('确定删除此模型？')) {
+        const model = MODELS[idx];
+        state.customModels = state.customModels.filter(m => m.id !== model.id);
+        MODELS.splice(idx, 1);
+
+        // Update selected indices
+        state.selected = state.selected.filter(i => i !== idx).map(i => i > idx ? i - 1 : i);
+
+        save();
+        syncConfigs();
+        renderAll();
+        renderModelLibrary();
+        showToast('模型已删除', 'success');
+      }
+    }
+
+    function openAddModel() {
+      document.getElementById('newModelId').value = '';
+      document.getElementById('newModelName').value = '';
+      document.getElementById('newModelIcon').value = '';
+      document.getElementById('newModelThink').checked = false;
+      document.getElementById('addModelModal').style.display = 'flex';
+    }
+
+    function saveNewModel() {
+      const id = document.getElementById('newModelId').value.trim();
+      const name = document.getElementById('newModelName').value.trim();
+      const ico = document.getElementById('newModelIcon').value.trim() || '🤖';
+      const think = document.getElementById('newModelThink').checked;
+
+      if (!id || !name) {
+        showToast('请填写模型ID和名称', 'error');
+        return;
+      }
+
+      if (MODELS.find(m => m.id === id)) {
+        showToast('该模型ID已存在', 'error');
+        return;
+      }
+
+      const newModel = { id, name, ico, think, builtin: false };
+      MODELS.push(newModel);
+      state.customModels.push(newModel);
+
+      save();
+      document.getElementById('addModelModal').style.display = 'none';
+      renderAll();
+      renderModelLibrary();
+      showToast('模型添加成功！', 'success');
+    }
+
+    // Import Models Functions
+    function openImportModelsModal() {
+      renderImportModelsList();
+      document.getElementById('importModelsModal').style.display = 'flex';
+    }
+
+    function renderImportModelsList(searchQuery = '') {
+      const list = document.getElementById('importModelsList');
+      const filtered = state.fetchedModels.filter(m =>
+        m.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+
+      if (filtered.length === 0) {
+        list.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-muted);">没有找到匹配的模型</div>';
+        return;
+      }
+
+      list.innerHTML = filtered.map((m, i) => {
+        const isExisting = MODELS.find(existing => existing.id === m.id);
+        const isSelected = state.selectedImportModels.has(m.id);
+
+        return `
+          <div style="padding: 10px; margin-bottom: 6px; background: ${isSelected ? 'var(--bg-sidebar)' : 'transparent'}; border-radius: 8px; display: flex; align-items: center; gap: 12px; border: 1px solid ${isSelected ? 'var(--primary)' : 'transparent'};">
+            <input type="checkbox"
+              ${isExisting ? 'disabled' : ''}
+              ${isSelected ? 'checked' : ''}
+              data-model-id="${m.id}"
+              class="import-model-checkbox"
+              style="cursor: ${isExisting ? 'not-allowed' : 'pointer'};">
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: 0.9rem;">${escape(m.name)}</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">${escape(m.id)}</div>
+            </div>
+            ${!isExisting && isSelected ? `
+              <label style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem; cursor: pointer;">
+                <input type="checkbox" class="think-checkbox" data-model-id="${m.id}" ${m.think ? 'checked' : ''}>
+                <span>💭 思考</span>
+              </label>
+            ` : ''}
+            ${isExisting ? '<span style="font-size: 0.7rem; background: var(--text-muted); color: white; padding: 2px 6px; border-radius: 8px;">已存在</span>' : ''}
+          </div>
+        `;
+      }).join('');
+
+      // Attach checkbox events
+      list.querySelectorAll('.import-model-checkbox:not([disabled])').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+          const modelId = e.target.dataset.modelId;
+          if (e.target.checked) {
+            state.selectedImportModels.add(modelId);
+          } else {
+            state.selectedImportModels.delete(modelId);
+          }
+          updateSelectedCount();
+          renderImportModelsList(document.getElementById('modelSearchInput').value);
+        });
+      });
+
+      // Attach think checkbox events
+      list.querySelectorAll('.think-checkbox').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+          const modelId = e.target.dataset.modelId;
+          const model = state.fetchedModels.find(m => m.id === modelId);
+          if (model) {
+            model.think = e.target.checked;
+          }
+        });
+      });
+
+      updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+      document.getElementById('selectedCount').textContent = state.selectedImportModels.size;
+    }
+
+    function selectAllImportModels() {
+      state.fetchedModels.forEach(m => {
+        if (!MODELS.find(existing => existing.id === m.id)) {
+          state.selectedImportModels.add(m.id);
+        }
+      });
+      renderImportModelsList(document.getElementById('modelSearchInput').value);
+    }
+
+    function deselectAllImportModels() {
+      state.selectedImportModels.clear();
+      renderImportModelsList(document.getElementById('modelSearchInput').value);
+    }
+
+    function confirmImportModels() {
+      if (state.selectedImportModels.size === 0) {
+        showToast('请至少选择一个模型', 'warning');
+        return;
+      }
+
+      const modelsToImport = state.fetchedModels.filter(m => state.selectedImportModels.has(m.id));
+
+      modelsToImport.forEach(m => {
+        if (!MODELS.find(existing => existing.id === m.id)) {
+          MODELS.push(m);
+          state.customModels.push(m);
+        }
+      });
+
+      save();
+      document.getElementById('importModelsModal').style.display = 'none';
+      renderAll();
+      renderModelLibrary();
+      showToast(`成功导入 ${modelsToImport.length} 个模型！`, 'success');
+    }
+
+    init();
+  })();
+</script>
+</body>
+</html>
